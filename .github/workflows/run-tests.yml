@@ -32,7 +32,6 @@ jobs:
 
     - name: Run RSpec with Flaky Reporter
       run: |
-        mkdir -p artifacts
         bundle exec rspec --format RSpec::Flaky::Formatter --out artifacts/flaky-rspec-run-${{ matrix.run }}.json
       continue-on-error: true  # Continue even if tests fail (important for flaky test detection)
 
