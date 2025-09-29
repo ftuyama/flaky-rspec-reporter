@@ -27,4 +27,4 @@ jobs:
         GITHUB_REPO_NAME: ${{ github.repository }}
         GITHUB_WORKFLOW_FILE: 'run-tests.yml'
         GITHUB_BRANCH: "main"
-        # GITHUB_PAT: ${{ secrets.GH_PAT }}
+        GH_PAT: ${{ secrets.GITHUB_PAT }}
