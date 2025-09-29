@@ -57,3 +57,6 @@ flaky-rspec.json
 
 # RSpec examples file
 spec/examples.txt
+
+# Ignore vendor bundle (local gem installation)
+/vendor/bundle
