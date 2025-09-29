@@ -191,8 +191,14 @@ GEM
       psych (>= 4.0.0)
     reline (0.6.2)
       io-console (~> 0.5)
+    rspec (3.13.1)
+      rspec-core (~> 3.13.0)
+      rspec-expectations (~> 3.13.0)
+      rspec-mocks (~> 3.13.0)
     rspec-core (3.13.5)
       rspec-support (~> 3.13.0)
+    rspec-ctrf (0.0.1)
+      rspec (~> 3.0)
     rspec-expectations (3.13.5)
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.13.0)
@@ -248,8 +254,9 @@ DEPENDENCIES
   puma (~> 6.0)
   rails (~> 8.0.0)
   rails-controller-testing
+  rspec-ctrf
   rspec-rails (~> 6.0)
-  rspec_junit_formatter (~> 0.6)
+  rspec_junit_formatter
   sqlite3 (~> 2.1)
 
 RUBY VERSION

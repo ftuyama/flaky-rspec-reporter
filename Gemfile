@@ -9,7 +9,9 @@ gem 'sqlite3', '~> 2.1'
 gem 'puma', '~> 6.0'
 gem 'bootsnap', '>= 1.4.4', require: false
 
-# Testing
-gem 'rspec-rails', '~> 6.0'
-gem 'rails-controller-testing'
-gem 'rspec_junit_formatter', '~> 0.6'
+group :test do
+  gem 'rspec-ctrf'
+  gem 'rspec_junit_formatter'
+  gem 'rspec-rails', '~> 6.0'
+  gem 'rails-controller-testing'
+end

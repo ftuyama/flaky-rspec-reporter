@@ -39,6 +39,7 @@
 
 # Ignore artifacts from flaky reporter
 /artifacts/*
+/ctrf/*
 flaky_summary.txt
 flaky-rspec.json
 
