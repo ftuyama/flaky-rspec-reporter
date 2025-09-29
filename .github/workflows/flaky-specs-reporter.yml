@@ -21,7 +21,7 @@ jobs:
       run: gem install octokit rubyzip
 
     - name: Run Flaky Consolidation
-      run: ./scripts/consolidate_flaky.rb
+      run: ruby ./scripts/consolidate_flaky.rb
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GITHUB_REPO_NAME: ${{ github.repository }}
