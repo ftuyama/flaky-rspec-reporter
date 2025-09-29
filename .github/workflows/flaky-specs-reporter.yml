@@ -7,7 +7,7 @@ on:
   workflow_dispatch: # Allow manual triggering
 
 jobs:
-  aggregate-flaky-results:
+  flaky-specs-reporter:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,6 +22,7 @@ jobs:
     - name: Download recent test artifacts
       uses: actions/download-artifact@v4
       with:
+        pattern: rspec-results-run-*
         path: artifacts/
         merge-multiple: true
 
