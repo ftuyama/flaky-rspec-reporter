@@ -35,13 +35,6 @@ jobs:
         bundle exec rspec --format RSpec::Flaky::Formatter --out artifacts/flaky-rspec-run-${{ matrix.run }}.json
       continue-on-error: true  # Continue even if tests fail (important for flaky test detection)
 
-    - name: Upload test artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: rspec-results-run-${{ matrix.run }}
-        path: artifacts/
-        retention-days: 30
-
     - name: Publish Test Report
       uses: ctrf-io/github-test-reporter@v1
       with:
@@ -49,3 +42,10 @@ jobs:
         flaky-rate-report: true
         previous-results-max: 100
       if: always()
+
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: rspec-results-run-${{ matrix.run }}
+        path: artifacts/
+        retention-days: 30
