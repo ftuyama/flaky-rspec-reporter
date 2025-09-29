@@ -1,0 +1,45 @@
+name: Run Tests and Upload Reports
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Run multiple times to increase chance of catching flaky tests
+        run: [1, 2, 3]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: 3.2.3
+        bundler-cache: true
+
+    - name: Set up database
+      run: |
+        bundle exec rails db:create db:migrate
+      env:
+        RAILS_ENV: test
+
+    - name: Run RSpec with Flaky Reporter
+      run: |
+        mkdir -p artifacts
+        bundle exec rspec --format RSpec::Flaky::Formatter --out artifacts/flaky-rspec-run-${{ matrix.run }}.json
+      continue-on-error: true  # Continue even if tests fail (important for flaky test detection)
+
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: rspec-results-run-${{ matrix.run }}
+        path: artifacts/
+        retention-days: 30
