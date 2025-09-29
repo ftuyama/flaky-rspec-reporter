@@ -4,9 +4,9 @@ require 'base64'
 require 'json'
 
 # Required ENV variables
-repo = ENV['GITHUB_REPO_NAME']      # e.g., owner/repo
+repo = ENV['GITHUB_REPO_NAME']
 token = ENV['GITHUB_TOKEN']
-workflow_file = ENV['GITHUB_WORKFLOW_FILE'] || 'Run Tests.yml'
+workflow_file = ENV['GITHUB_WORKFLOW_FILE'] || 'run-tests.yml'
 branch = ENV['GITHUB_BRANCH'] || 'main'
 
 client = Octokit::Client.new(access_token: token)

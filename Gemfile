@@ -8,6 +8,7 @@ gem 'rails', '~> 8.0.0'
 gem 'sqlite3', '~> 2.1'
 gem 'puma', '~> 6.0'
 gem 'bootsnap', '>= 1.4.4', require: false
+gem 'octokit' # flaky specs
 
 group :test do
   gem 'rspec-ctrf'
