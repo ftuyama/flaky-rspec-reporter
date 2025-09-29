@@ -9,6 +9,9 @@ on:
 jobs:
   flaky-specs-reporter:
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
 
     steps:
     - name: Checkout code
