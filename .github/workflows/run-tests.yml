@@ -1,4 +1,4 @@
-name: Run Tests and Upload Reports
+name: Run Tests
 
 on:
   push:
@@ -12,7 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # Run multiple times to increase chance of catching flaky tests
         run: [1, 2, 3]
 
     steps:
@@ -22,12 +21,12 @@ jobs:
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: 3.2.3
+        ruby-version: 3.4.2
         bundler-cache: true
 
     - name: Set up database
       run: |
-        bundle exec rails db:create db:migrate
+        RAILS_ENV=test bundle exec rake db:create db:migrate
       env:
         RAILS_ENV: test
 

@@ -1,4 +1,4 @@
-name: Aggregate Flaky Test Results
+name: Flaky Specs Reporter
 
 on:
   schedule:
@@ -17,7 +17,7 @@ jobs:
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: 3.2.3
+        ruby-version: 3.4.2
 
     - name: Download recent test artifacts
       uses: actions/download-artifact@v4
@@ -49,8 +49,8 @@ jobs:
             const summary = fs.readFileSync('flaky_summary.txt', 'utf8');
 
             // Check if summary contains flaky tests
-            if (summary.includes('FLAKY TESTS DETECTED:')) {
-              const title = `🔥 Flaky Tests Detected - ${new Date().toISOString().split('T')[0]}`;
+            if (summary.includes('FLAKY TESTS DETECTED')) {
+              const title = `🔥 Flaky Tests Detected`;
               const body = `# Flaky Test Detection Report
 
               **Generated on:** ${new Date().toISOString()}
@@ -62,18 +62,6 @@ jobs:
               \`\`\`
               ${summary}
               \`\`\`
-
-              ## Actions Required
-
-              - [ ] Review the flaky tests listed above
-              - [ ] Investigate root causes of flakiness
-              - [ ] Fix or improve test stability
-              - [ ] Consider adding retry logic for genuinely flaky external dependencies
-
-              ## Resources
-
-              - [Test Run]($\{context.payload.repository.html_url}/actions/runs/${context.runId})
-              - [Flaky Test Documentation](https://github.com/ftuyama/flaky-rspec-reporter)
 
               ---
               *This issue was automatically created by the Flaky RSpec Reporter workflow.*
@@ -103,7 +91,7 @@ jobs:
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: issues[0].number,
-                  body: `## Updated Flaky Test Report - ${new Date().toISOString().split('T')[0]}
+                  body: `## Updated Flaky Test Report
 
                   \`\`\`
                   ${summary}

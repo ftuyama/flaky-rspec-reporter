@@ -60,3 +60,4 @@ spec/examples.txt
 
 # Ignore vendor bundle (local gem installation)
 /vendor/bundle
+.DS_Store
