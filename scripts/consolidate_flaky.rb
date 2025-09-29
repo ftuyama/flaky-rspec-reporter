@@ -1,10 +1,14 @@
 #!/usr/bin/env ruby
 require 'octokit'
+require 'net/http'
+require 'uri'
 require 'base64'
 require 'json'
+require 'zip' # for reading zip files if needed
+require 'tempfile'
 
 # Required ENV variables
-repo = ENV['GITHUB_REPO_NAME']
+repo = ENV['GITHUB_REPO_NAME'] || 'ftuyama/flaky-rspec-reporter'
 token = ENV['GITHUB_TOKEN']
 workflow_file = ENV['GITHUB_WORKFLOW_FILE'] || 'run-tests.yml'
 branch = ENV['GITHUB_BRANCH'] || 'main'
@@ -24,9 +28,26 @@ run_ids.each do |run_id|
   artifacts.each do |artifact|
     next unless artifact[:name].start_with?('rspec-results-run')
 
-    zip_data = client.download_artifact("#{owner}/#{repo_name}", artifact[:id], archive_format: 'zip')
-    # The downloaded data is base64, convert to string
-    artifact_contents << Base64.decode64(zip_data)
+    # Fetch the artifact zip file
+    uri = URI(artifact[:archive_download_url])
+    req = Net::HTTP::Get.new(uri)
+    req['Authorization'] = "token #{token}"
+    req['Accept'] = 'application/vnd.github.v3+json'
+
+    res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+
+    # Save to temp file and extract the JSON(s) inside
+    Tempfile.open(['artifact', '.zip']) do |tmp|
+      tmp.binmode
+      tmp.write(res.body)
+      tmp.rewind
+
+      Zip::File.open(tmp.path) do |zip_file|
+        zip_file.each do |entry|
+          artifact_contents << entry.get_input_stream.read if entry.name.end_with?('.json')
+        end
+      end
+    end
   end
 end
 
