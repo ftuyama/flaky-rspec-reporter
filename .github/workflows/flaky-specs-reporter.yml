@@ -17,6 +17,9 @@ jobs:
       with:
         ruby-version: 3.4.2
 
+    - name: Install Octokit
+      run: gem install octokit
+
     - name: Run Flaky Consolidation
       run: ./scripts/consolidate_flaky.rb
       env:
