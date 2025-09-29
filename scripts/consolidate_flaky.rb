@@ -1,7 +1,8 @@
 require_relative 'github_integration'
 require_relative 'flaky_report_builder'
 
-github = GithubIntegration.new(repo: "ftuyama/flaky-rspec-reporter", token: ENV['GITHUB_TOKEN'])
+token = ENV['GH_PAT'] || ENV['GITHUB_TOKEN']
+github = GithubIntegration.new(repo: "ftuyama/flaky-rspec-reporter", token:)
 runs = github.last_workflow_runs(workflow_file: "run-tests.yml", branch: "main", count: 3)
 
 all_jsons = []
@@ -16,7 +17,7 @@ end
 builder = FlakyReportBuilder.new(all_jsons)
 body = builder.build
 issue_title = "Consolidated Flaky RSpec Report"
-client = Octokit::Client.new(access_token: ENV['GITHUB_TOKEN'])
+client = Octokit::Client.new(access_token: token)
 issues = client.issues("ftuyama/flaky-rspec-reporter", state: 'open')
 existing = issues.find { |i| i[:title] == issue_title }
 
