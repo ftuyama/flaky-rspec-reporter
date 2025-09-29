@@ -45,7 +45,7 @@ jobs:
     - name: Publish Test Report
       uses: ctrf-io/github-test-reporter@v1
       with:
-        report-path: './ctrf/*.json'
+        report-path: './artifacts/*.json'
         flaky-rate-report: true
         previous-results-max: 100
       if: always()
