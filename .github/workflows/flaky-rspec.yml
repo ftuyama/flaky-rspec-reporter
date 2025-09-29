@@ -25,7 +25,7 @@ jobs:
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: 3.1.0
+        ruby-version: 3.2.3
         bundler-cache: true
 
     - name: Set up database
@@ -59,7 +59,7 @@ jobs:
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: 3.1.0
+        ruby-version: 3.2.3
 
     - name: Download all artifacts
       uses: actions/download-artifact@v4

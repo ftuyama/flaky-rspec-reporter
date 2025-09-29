@@ -2,6 +2,7 @@
 
 require 'json'
 require 'fileutils'
+require 'time'
 
 class FlakyReportAggregator
   def initialize
@@ -26,7 +27,7 @@ class FlakyReportAggregator
   private
 
   def load_reports
-    report_files = Dir.glob(File.join(@artifacts_dir, '**', 'flaky-rspec.json'))
+    report_files = Dir.glob(File.join(@artifacts_dir, '**', '*.json'))
     
     report_files.each do |file|
       begin
