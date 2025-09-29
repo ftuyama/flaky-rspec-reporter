@@ -2,19 +2,14 @@ name: Flaky Specs Reporter
 
 on:
   schedule:
-    # Run every day at 2 AM UTC to detect flaky tests
     - cron: '0 2 * * *'
-  workflow_dispatch: # Allow manual triggering
+  workflow_dispatch:
 
 jobs:
   flaky-specs-reporter:
     runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-
     steps:
-    - name: Checkout code
+    - name: Checkout
       uses: actions/checkout@v4
 
     - name: Set up Ruby
@@ -22,95 +17,13 @@ jobs:
       with:
         ruby-version: 3.4.2
 
-    - name: Download recent test artifacts
-      uses: actions/download-artifact@v4
-      with:
-        pattern: rspec-results-run-*
-        path: artifacts/
-        merge-multiple: true
+    - name: Install Octokit
+      run: gem install octokit
 
-    - name: Aggregate flaky test reports
-      run: |
-        ruby scripts/aggregate_flaky.rb > flaky_summary.txt
-
-    - name: Display summary
-      run: cat flaky_summary.txt
-
-    - name: Upload flaky summary
-      uses: actions/upload-artifact@v4
-      with:
-        name: flaky-summary
-        path: flaky_summary.txt
-        retention-days: 30
-
-    - name: Create or update flaky test issues
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const fs = require('fs');
-
-          try {
-            const summary = fs.readFileSync('flaky_summary.txt', 'utf8');
-
-            // Check if summary contains flaky tests
-            if (summary.includes('FLAKY TESTS DETECTED')) {
-              const title = `🔥 Flaky Tests Detected`;
-              const body = `# Flaky Test Detection Report
-
-              **Generated on:** ${new Date().toISOString()}
-              **Workflow:** ${context.workflow}
-              **Run ID:** ${context.runId}
-
-              ## Summary
-
-              \`\`\`
-              ${summary}
-              \`\`\`
-
-              ---
-              *This issue was automatically created by the Flaky RSpec Reporter workflow.*
-              `;
-
-              // Check for existing open flaky test issues
-              const { data: issues } = await github.rest.issues.listForRepo({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                labels: 'flaky-tests',
-                state: 'open'
-              });
-
-              if (issues.length === 0) {
-                // Create new issue
-                await github.rest.issues.create({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  title: title,
-                  body: body,
-                  labels: ['bug', 'flaky-tests', 'automated']
-                });
-                console.log('Created new flaky test issue');
-              } else {
-                // Update existing issue
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issues[0].number,
-                  body: `## Updated Flaky Test Report
-
-                  \`\`\`
-                  ${summary}
-                  \`\`\`
-
-                  [View full test run results]($\{context.payload.repository.html_url}/actions/runs/${context.runId})
-                  `
-                });
-                console.log('Updated existing flaky test issue');
-              }
-            } else {
-              console.log('No flaky tests detected, no issue creation needed');
-            }
-          } catch (error) {
-            console.log('Error creating/updating flaky test issue:', error.message);
-          }
+    - name: Run Flaky Consolidation
+      run: ./scripts/consolidate_flaky.rb
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_REPO_NAME: ${{ github.repository }}
+        GITHUB_WORKFLOW_FILE: "Run Tests.yml"
+        GITHUB_BRANCH: "main"
