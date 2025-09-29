@@ -28,7 +28,7 @@ class FlakyReportAggregator
 
   def load_reports
     report_files = Dir.glob(File.join(@artifacts_dir, '**', '*.json'))
-    
+
     report_files.each do |file|
       begin
         content = File.read(file)
@@ -49,10 +49,10 @@ class FlakyReportAggregator
   def analyze_flakiness
     @reports.each do |report|
       examples = report['examples'] || []
-      
+
       examples.each do |example|
         key = example['full_description']
-        
+
         @flaky_tests[key] ||= {
           description: example['description'],
           full_description: example['full_description'],
@@ -72,7 +72,7 @@ class FlakyReportAggregator
         when 'failed'
           @flaky_tests[key][:failures] += 1
           @flaky_tests[key][:last_failure] = example['timestamp']
-          
+
           if example['exception'] && example['exception']['message']
             message = example['exception']['message']
             @flaky_tests[key][:failure_messages] << message unless @flaky_tests[key][:failure_messages].include?(message)
@@ -87,7 +87,7 @@ class FlakyReportAggregator
     @flaky_tests.each do |key, test_data|
       if test_data[:total_runs] > 0
         test_data[:failure_rate] = (test_data[:failures].to_f / test_data[:total_runs] * 100).round(2)
-        
+
         # Consider a test flaky if it has both failures and passes
         if test_data[:failures] > 0 && test_data[:passes] > 0
           @summary[:flaky_examples] << test_data
@@ -108,18 +108,18 @@ class FlakyReportAggregator
     puts "Total test runs analyzed: #{@summary[:total_runs]}"
     puts "Total examples across all runs: #{@summary[:total_examples]}"
     puts "Number of flaky tests identified: #{@summary[:flaky_examples].size}"
-    
+
     if @summary[:flaky_examples].any?
       puts "\n" + "-"*80
       puts "FLAKY TESTS DETECTED:"
       puts "-"*80
-      
+
       @summary[:flaky_examples].each_with_index do |test, index|
         puts "\n#{index + 1}. #{test[:full_description]}"
         puts "   File: #{test[:file_path]}:#{test[:line_number]}"
         puts "   Failure Rate: #{test[:failure_rate]}% (#{test[:failures]}/#{test[:total_runs]} runs failed)"
         puts "   Last Failure: #{test[:last_failure]}"
-        
+
         if test[:failure_messages].any?
           puts "   Common Failure Messages:"
           test[:failure_messages].first(3).each do |msg|
@@ -151,7 +151,7 @@ end
 unless Dir.exist?('artifacts')
   puts "Creating artifacts directory for demo purposes..."
   FileUtils.mkdir_p('artifacts')
-  
+
   # Create a sample report for demonstration
   sample_report = {
     "total_examples" => 10,
@@ -174,7 +174,7 @@ unless Dir.exist?('artifacts')
       }
     ]
   }
-  
+
   File.write('artifacts/flaky-rspec.json', JSON.pretty_generate(sample_report))
   puts "Created sample report at artifacts/flaky-rspec.json"
 end

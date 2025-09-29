@@ -12,3 +12,4 @@ gem 'bootsnap', '>= 1.4.4', require: false
 # Testing
 gem 'rspec-rails', '~> 6.0'
 gem 'rails-controller-testing'
+gem 'rspec_junit_formatter', '~> 0.6'

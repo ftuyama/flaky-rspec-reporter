@@ -41,3 +41,11 @@ jobs:
         name: rspec-results-run-${{ matrix.run }}
         path: artifacts/
         retention-days: 30
+
+    - name: Publish Test Report
+      uses: ctrf-io/github-test-reporter@v1
+      with:
+        report-path: './ctrf/*.json'
+        flaky-rate-report: true
+        previous-results-max: 100
+      if: always()
