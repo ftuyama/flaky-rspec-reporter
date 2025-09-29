@@ -1,0 +1,210 @@
+name: RSpec Flaky Reporter
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run every day at 2 AM UTC to detect flaky tests
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Run multiple times to increase chance of catching flaky tests
+        run: [1, 2, 3, 4, 5]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: 3.1.0
+        bundler-cache: true
+
+    - name: Set up database
+      run: |
+        bundle exec rails db:create db:migrate
+      env:
+        RAILS_ENV: test
+
+    - name: Run RSpec with Flaky Reporter
+      run: |
+        mkdir -p artifacts
+        bundle exec rspec --format RSpec::Flaky::Formatter --out artifacts/flaky-rspec-run-${{ matrix.run }}.json
+      continue-on-error: true  # Continue even if tests fail (important for flaky test detection)
+
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: rspec-results-run-${{ matrix.run }}
+        path: artifacts/
+        retention-days: 30
+
+  aggregate:
+    needs: test
+    runs-on: ubuntu-latest
+    if: always() # Run even if tests failed
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: 3.1.0
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts/
+        merge-multiple: true
+
+    - name: Aggregate flaky test reports
+      run: |
+        ruby scripts/aggregate_flaky.rb > flaky_summary.txt
+        
+    - name: Display summary
+      run: cat flaky_summary.txt
+
+    - name: Upload flaky summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: flaky-summary
+        path: flaky_summary.txt
+        retention-days: 30
+
+    - name: Comment on PR with flaky test results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          try {
+            const summary = fs.readFileSync('flaky_summary.txt', 'utf8');
+            
+            const body = `## 🔍 Flaky Test Detection Results
+            
+            \`\`\`
+            ${summary}
+            \`\`\`
+            
+            This report shows any tests that exhibited flaky behavior during the test run.
+            `;
+            
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+          } catch (error) {
+            console.log('Could not read flaky summary or post comment:', error.message);
+          }
+
+  # Scheduled job to create persistent issues for flaky tests
+  create-flaky-issues:
+    needs: aggregate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' # Only run on scheduled builds
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download flaky summary
+      uses: actions/download-artifact@v4
+      with:
+        name: flaky-summary
+
+    - name: Create or update flaky test issues
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          try {
+            const summary = fs.readFileSync('flaky_summary.txt', 'utf8');
+            
+            // Check if summary contains flaky tests
+            if (summary.includes('FLAKY TESTS DETECTED:')) {
+              const title = `🔥 Flaky Tests Detected - ${new Date().toISOString().split('T')[0]}`;
+              const body = `# Flaky Test Detection Report
+              
+              **Generated on:** ${new Date().toISOString()}
+              **Workflow:** ${context.workflow}
+              **Run ID:** ${context.runId}
+              
+              ## Summary
+              
+              \`\`\`
+              ${summary}
+              \`\`\`
+              
+              ## Actions Required
+              
+              - [ ] Review the flaky tests listed above
+              - [ ] Investigate root causes of flakiness
+              - [ ] Fix or improve test stability
+              - [ ] Consider adding retry logic for genuinely flaky external dependencies
+              
+              ## Resources
+              
+              - [Test Run]($\{context.payload.repository.html_url}/actions/runs/${context.runId})
+              - [Flaky Test Documentation](https://github.com/ftuyama/flaky-rspec-reporter)
+              
+              ---
+              *This issue was automatically created by the Flaky RSpec Reporter workflow.*
+              `;
+              
+              // Check for existing open flaky test issues
+              const { data: issues } = await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                labels: 'flaky-tests',
+                state: 'open'
+              });
+              
+              if (issues.length === 0) {
+                // Create new issue
+                await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title: title,
+                  body: body,
+                  labels: ['bug', 'flaky-tests', 'automated']
+                });
+                console.log('Created new flaky test issue');
+              } else {
+                // Update existing issue
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issues[0].number,
+                  body: `## Updated Flaky Test Report - ${new Date().toISOString().split('T')[0]}
+                  
+                  \`\`\`
+                  ${summary}
+                  \`\`\`
+                  
+                  [View full test run results]($\{context.payload.repository.html_url}/actions/runs/${context.runId})
+                  `
+                });
+                console.log('Updated existing flaky test issue');
+              }
+            } else {
+              console.log('No flaky tests detected, no issue creation needed');
+            }
+          } catch (error) {
+            console.log('Error creating/updating flaky test issue:', error.message);
+          }
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
