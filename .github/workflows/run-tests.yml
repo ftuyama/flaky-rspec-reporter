@@ -52,7 +52,7 @@ jobs:
       with:
         report-path: 'ctrf/*.json'
         flaky-rate-report: true
-        previous-results-max: 100
+        previous-results-max: 50
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       if: always()
