@@ -20,7 +20,7 @@ runs.each do |run|
 end
 
 # Aggregate tests and build a report
-report = FlakyReportBuilder.new(all_jsons).build
+report = ReportBuilder.new(all_jsons).build
 
 # Publishing the report
 puts("Flaky report:\n------\n\n#{report}") # rubocop:disable Rails/Output
