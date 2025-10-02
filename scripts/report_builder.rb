@@ -1,4 +1,7 @@
-class FlakyReportBuilder
+# frozen_string_literal: true
+
+# Builds the flaky spec report (md format)
+class ReportBuilder
   attr_reader :json_contents
 
   def initialize(json_contents)
@@ -17,7 +20,7 @@ class FlakyReportBuilder
     json_contents.map do |json_str|
       JSON.parse(json_str)
     rescue JSON::ParserError => e
-      warn "Failed to parse JSON: #{e.message}"
+      warn("Failed to parse JSON: #{e.message}")
       nil
     end.compact
   end
@@ -31,7 +34,7 @@ class FlakyReportBuilder
     end
   end
 
-  def detect_flaky(all_runs)
+  def detect_flaky(all_runs) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
     examples = examples_with_run_data(all_runs)
     spec_groups = examples.group_by { |ex| [ex['file_path'], ex['line_number'], ex['full_description']] }
 
@@ -40,7 +43,7 @@ class FlakyReportBuilder
     spec_groups.each do |key, runs|
       total = runs.size
       failed = runs.count { |ex| ex['status'] != 'passed' }
-      next if failed == 0
+      next if failed.zero?
 
       flaky[key] = {
         file_line: "#{key[0]}:#{key[1]}",
@@ -55,7 +58,7 @@ class FlakyReportBuilder
   end
 
   def generate_markdown(flaky_specs, all_runs)
-    return "No flaky specs detected across runs." if flaky_specs.empty?
+    return 'No flaky specs detected across runs.' if flaky_specs.empty?
 
     num_runs = all_runs.size
     first_run_date = all_runs.map { |r| r['run_start_time'] }.min

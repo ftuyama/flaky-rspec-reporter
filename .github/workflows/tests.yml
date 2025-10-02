@@ -1,4 +1,4 @@
-name: Run Tests
+name: Tests
 
 on:
   push:
@@ -32,12 +32,12 @@ jobs:
 
     - name: Run RSpec with Flaky Reporter
       run: |
-        bundle exec rspec --format RSpec::Flaky::Formatter --out artifacts/flaky-rspec-run-${{ matrix.run }}.json
+        bundle exec rspec --format RSpec::Flaky::Formatter --out artifacts/flaky-rspec-${{ matrix.run }}.json
       continue-on-error: true
 
     - name: Upload test artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: rspec-results-run-${{ matrix.run }}
+        name: rspec-results-${{ matrix.run }}
         path: artifacts/
         retention-days: 30

@@ -1,12 +1,14 @@
+# frozen_string_literal: true
+
 require 'octokit'
 require 'zip'
 require 'net/http'
 require 'uri'
 
 
+# Github Integration to fetch artifacts and manage issue
 class GithubIntegration
   MAX_RETRY_ATTEMPTS = 2
-  RETRYABLE_ERRORS = []
 
   attr_reader :repo, :token, :client
 
@@ -22,13 +24,13 @@ class GithubIntegration
     @repo = repo
     @token = token
     @client = Octokit::Client.new(access_token: token)
-    @owner, @repo_name = repo.split('/')
+    @repository = repo
   end
 
   # Get last N workflow runs for a given workflow file and branch
-  def last_workflow_runs(workflow_file:, branch: 'main', count: 10)
+  def last_workflow_runs(workflow_file:, count: 10)
     with_api_retries do
-      resp = client.workflow_runs("#{@owner}/#{@repo_name}", workflow_file, branch: branch, status: 'completed')
+      resp = client.workflow_runs(@repository, workflow_file, status: 'completed')
       resp[:workflow_runs].first(count)
     end
   end
@@ -36,13 +38,13 @@ class GithubIntegration
   # List artifacts for a workflow run
   def artifacts_for_run(run_id)
     with_api_retries do
-      client.workflow_run_artifacts("#{@owner}/#{@repo_name}", run_id)[:artifacts]
+      client.workflow_run_artifacts(@repository, run_id)[:artifacts]
     end
   end
 
   # Download artifact and return content
   def download_artifact(artifact)
-    raise "Artifact missing archive_download_url" unless artifact[:archive_download_url]
+    raise('Artifact missing archive_download_url') unless artifact[:archive_download_url]
 
     redirect_url = get_redirect_url(artifact[:archive_download_url])
     zip_file = "#{artifact[:name]}.zip"
@@ -60,6 +62,18 @@ class GithubIntegration
     contents
   end
 
+  def create_or_update_github_issue(body)
+    issue_title = 'Flaky Specs Report'
+    issues = @client.issues(repository, state: 'open')
+    existing = issues.find { |i| i[:title] == issue_title }
+
+    if existing
+      client.update_issue(repository, existing[:number], body: body)
+    else
+      client.create_issue(repository, issue_title, body)
+    end
+  end
+
   private
 
   # Follow redirect to get the actual download link
@@ -72,7 +86,8 @@ class GithubIntegration
 
       res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
 
-      raise "Failed to get redirect for artifact" unless res.is_a?(Net::HTTPRedirection)
+      raise('Failed to get redirect for artifact') unless res.is_a?(Net::HTTPRedirection)
+
       res['location']
     end
   end
@@ -81,6 +96,7 @@ class GithubIntegration
     yield
   rescue Octokit::Unauthorized, StandardError => ex
     raise ex if attempt >= MAX_RETRY_ATTEMPTS
+
     sleep 1
     with_api_retries(attempt: attempt + 1, &Proc.new)
   end
