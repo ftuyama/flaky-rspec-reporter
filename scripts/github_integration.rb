@@ -68,9 +68,9 @@ class GithubIntegration
     existing = issues.find { |i| i[:title] == issue_title }
 
     if existing
-      client.update_issue(repository, existing[:number], body: body)
+      client.update_issue(@repository, existing[:number], body: body)
     else
-      client.create_issue(repository, issue_title, body)
+      client.create_issue(@repository, issue_title, body)
     end
   end
 
