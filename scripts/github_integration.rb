@@ -46,7 +46,7 @@ class GithubIntegration
     zip_file = "#{artifact[:name]}.zip"
 
     puts("Downloading #{artifact[:name]} ##{artifact[:id]}") # rubocop:disable Rails/Output
-    system("wget -q -O '#{zip_file}' '#{get_redirect_url(url)}'") ||
+    system('wget', '-q', '-O', zip_file, get_redirect_url(url)) ||
       raise("Failed to download #{artifact[:name]}")
 
     extract_json_from_zip(zip_file)
