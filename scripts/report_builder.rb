@@ -34,47 +34,47 @@ class ReportBuilder
     end
   end
 
-  def detect_flaky(all_runs) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
-    examples = examples_with_run_data(all_runs)
-    spec_groups = examples.group_by { |ex| [ex['file_path'], ex['line_number'], ex['full_description']] }
+  def detect_flaky(all_runs)
+    examples_with_run_data(all_runs)
+      .group_by { |ex| [ex['file_path'], ex['line_number'], ex['full_description']] }
+      .map { |key, runs| build_flaky_spec(key, runs) }
+      .compact
+      .sort_by { |h| -h[:rate] }
+  end
 
-    flaky = {}
+  def build_flaky_spec((file, line, description), runs)
+    total = runs.size
+    failures = runs.count { |ex| ex['status'] != 'passed' }
+    return if failures.zero?
 
-    spec_groups.each do |key, runs|
-      total = runs.size
-      failed = runs.count { |ex| ex['status'] != 'passed' }
-      next if failed.zero?
-
-      flaky[key] = {
-        file_line: "#{key[0]}:#{key[1]}",
-        description: key[2],
-        failures: failed,
-        total: total,
-        rate: (failed.to_f / total * 100).round(2)
-      }
-    end
-
-    flaky.values.sort_by { |h| -h[:rate] }
+    {
+      file_line: "#{file}:#{line}",
+      description:,
+      failures:,
+      total:,
+      rate: (failures.to_f / total * 100).round(2)
+    }
   end
 
   def generate_markdown(flaky_specs, all_runs)
     return 'No flaky specs detected across runs.' if flaky_specs.empty?
 
-    num_runs = all_runs.size
-    first_run_date = all_runs.map { |r| r['run_start_time'] }.min
+    header = <<~MD
+      # Flaky RSpec Report
 
-    md = "# Flaky RSpec Report\n\n"
-    md << "Generated at: #{Time.now.utc}\n\n"
-    md << "Number of runs processed: #{num_runs}  \n"
-    md << "First run date: #{first_run_date}\n\n"
+      Generated at: #{Time.now.utc}
 
-    md << "| File:Line | Spec Description | Failures / Total | Flaky Rate (%) |\n"
-    md << "|-----------|-----------------|----------------|----------------|\n"
+      Number of runs processed: #{all_runs.size}
+      First run date: #{all_runs.map { |r| r['run_start_time'] }.min}
 
-    flaky_specs.each do |spec|
-      md << "| `#{spec[:file_line]}` | #{spec[:description]} | #{spec[:failures]}/#{spec[:total]} | #{spec[:rate]} |\n"
+      | File:Line | Spec Description | Failures / Total | Flaky Rate (%) |
+      |-----------|-----------------|------------------|----------------|
+    MD
+
+    rows = flaky_specs.map do |spec|
+      "| `#{spec[:file_line]}` | #{spec[:description]} | #{spec[:failures]}/#{spec[:total]} | #{spec[:rate]} |"
     end
 
-    md
+    "#{header}#{rows.join("\n")}\n"
   end
 end

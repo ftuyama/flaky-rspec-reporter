@@ -5,7 +5,6 @@ require 'zip'
 require 'net/http'
 require 'uri'
 
-
 # Github Integration to fetch artifacts and manage issue
 class GithubIntegration
   MAX_RETRY_ATTEMPTS = 2
@@ -24,13 +23,12 @@ class GithubIntegration
     @repo = repo
     @token = token
     @client = Octokit::Client.new(access_token: token)
-    @repository = repo
   end
 
   # Get last N workflow runs for a given workflow file and branch
   def last_workflow_runs(workflow_file:, count: 10)
     with_api_retries do
-      resp = client.workflow_runs(@repository, workflow_file, status: 'completed')
+      resp = client.workflow_runs(@repo, workflow_file, status: 'completed')
       resp[:workflow_runs].first(count)
     end
   end
@@ -38,39 +36,41 @@ class GithubIntegration
   # List artifacts for a workflow run
   def artifacts_for_run(run_id)
     with_api_retries do
-      client.workflow_run_artifacts(@repository, run_id)[:artifacts]
+      client.workflow_run_artifacts(@repo, run_id)[:artifacts]
     end
   end
 
   # Download artifact and return content
   def download_artifact(artifact)
-    raise('Artifact missing archive_download_url') unless artifact[:archive_download_url]
-
-    redirect_url = get_redirect_url(artifact[:archive_download_url])
+    url = artifact[:archive_download_url] or raise('Artifact missing archive_download_url')
     zip_file = "#{artifact[:name]}.zip"
 
-    # Download with wget
-    puts "Downloading #{artifact[:name]} ##{artifact[:id]}"
-    system("wget -q -O #{zip_file} '#{redirect_url}'") || raise("Failed to download #{artifact[:name]}")
+    puts("Downloading #{artifact[:name]} ##{artifact[:id]}") # rubocop:disable Rails/Output
+    system("wget -q -O #{zip_file} '#{get_redirect_url(url)}'") ||
+      raise("Failed to download #{artifact[:name]}")
 
-    contents = []
+    extract_json_from_zip(zip_file)
+  ensure
+    File.delete(zip_file) if zip_file && File.exist?(zip_file)
+  end
+
+  def extract_json_from_zip(zip_file)
     Zip::File.open(zip_file) do |zip|
-      zip.each { |entry| contents << entry.get_input_stream.read if entry.name.end_with?('.json') }
+      zip.filter_map do |entry|
+        entry.get_input_stream.read if entry.name.end_with?('.json')
+      end
     end
-
-    File.delete(zip_file) if File.exist?(zip_file)
-    contents
   end
 
   def create_or_update_github_issue(body)
     issue_title = 'Flaky Specs Report'
-    issues = @client.issues(@repository, state: 'open')
+    issues = @client.issues(@repo, state: 'open')
     existing = issues.find { |i| i[:title] == issue_title }
 
     if existing
-      client.update_issue(@repository, existing[:number], body: body)
+      client.update_issue(@repo, existing[:number], body: body)
     else
-      client.create_issue(@repository, issue_title, body)
+      client.create_issue(@repo, issue_title, body)
     end
   end
 
