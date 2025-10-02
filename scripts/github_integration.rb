@@ -43,10 +43,10 @@ class GithubIntegration
   # Download artifact and return content
   def download_artifact(artifact)
     url = artifact[:archive_download_url] or raise('Artifact missing archive_download_url')
-    zip_file = "'#{artifact[:name]}.zip'"
+    zip_file = "#{artifact[:name]}.zip"
 
     puts("Downloading #{artifact[:name]} ##{artifact[:id]}") # rubocop:disable Rails/Output
-    system("wget -q -O #{zip_file} '#{get_redirect_url(url)}'") ||
+    system("wget -q -O '#{zip_file}' '#{get_redirect_url(url)}'") ||
       raise("Failed to download #{artifact[:name]}")
 
     extract_json_from_zip(zip_file)
