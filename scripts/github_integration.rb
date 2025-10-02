@@ -64,7 +64,7 @@ class GithubIntegration
 
   def create_or_update_github_issue(body)
     issue_title = 'Flaky Specs Report'
-    issues = @client.issues(repository, state: 'open')
+    issues = @client.issues(@repository, state: 'open')
     existing = issues.find { |i| i[:title] == issue_title }
 
     if existing
