@@ -44,7 +44,7 @@ class ReportBuilder
 
   def build_flaky_spec((file, line, description), runs)
     total = runs.size
-    failures = runs.count { |ex| ex['status'] != 'passed' }
+    failures = runs.count { |ex| !%w[passed pending].include?(ex['status']) }
     return if failures.zero?
 
     {
