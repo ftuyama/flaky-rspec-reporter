@@ -3,7 +3,7 @@
 require_relative 'github_integration'
 require_relative 'report_builder'
 
-token = ENV['GH_PAT'] || ENV['GITHUB_TOKEN']
+token = ENV['GITHUB_TOKEN']
 repository = ENV['GITHUB_REPO_NAME']
 workflow_file = ENV['GITHUB_WORKFLOW_FILE']
 

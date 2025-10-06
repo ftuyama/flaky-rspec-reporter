@@ -5,6 +5,10 @@ on:
   #   - cron: '0 2 * * *'
   workflow_dispatch:
 
+permissions:
+  issues: write
+  contents: read
+
 jobs:
   flaky-specs-reporter:
     runs-on: ubuntu-latest
@@ -26,4 +30,3 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GITHUB_REPO_NAME: ${{ github.repository }}
         GITHUB_WORKFLOW_FILE: 'tests.yml'
-        GH_PAT: ${{ secrets.GH_PAT }}
