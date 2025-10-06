@@ -92,12 +92,11 @@ class GithubIntegration
     end
   end
 
-  def with_api_retries(attempt: 0)
+  def with_api_retries(attempt: 0, &block)
     yield
   rescue Octokit::Unauthorized, StandardError => ex
     raise ex if attempt >= MAX_RETRY_ATTEMPTS
-
     sleep 1
-    with_api_retries(attempt: attempt + 1, &Proc.new)
+    with_api_retries(attempt: attempt + 1, &block)
   end
 end
