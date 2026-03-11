@@ -2,8 +2,6 @@
 
 require 'octokit'
 require 'zip'
-require 'net/http'
-require 'uri'
 
 # Github Integration to fetch artifacts and manage issue
 class GithubIntegration
@@ -42,11 +40,12 @@ class GithubIntegration
 
   # Download artifact and return content
   def download_artifact(artifact)
-    url = artifact[:archive_download_url] or raise('Artifact missing archive_download_url')
     zip_file = "#{artifact[:name]}.zip"
+    download_url = get_artifact_download_url(artifact[:id])
+    return [] if download_url.nil?
 
     puts("Downloading #{artifact[:name]} ##{artifact[:id]}") # rubocop:disable Rails/Output
-    system('wget', '-q', '-O', zip_file, get_redirect_url(url)) ||
+    system('wget', '-q', '-O', zip_file, download_url) ||
       raise("Failed to download #{artifact[:name]}")
 
     extract_json_from_zip(zip_file)
@@ -76,20 +75,14 @@ class GithubIntegration
 
   private
 
-  # Follow redirect to get the actual download link
-  def get_redirect_url(url)
+  # Get the signed download URL from the artifact 302 redirect (via Octokit).
+  def get_artifact_download_url(artifact_id)
     with_api_retries do
-      uri = URI(url)
-      req = Net::HTTP::Get.new(uri)
-      req['Authorization'] = "token #{token}"
-      req['Accept'] = 'application/vnd.github.v3+json'
-
-      res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
-
-      raise('Failed to get redirect for artifact') unless res.is_a?(Net::HTTPRedirection)
-
-      res['location']
+      client.artifact_download_url(@repo, artifact_id)
     end
+  rescue StandardError => e
+    warn("Skipping artifact #{artifact_id}: #{e.message}")
+    nil
   end
 
   def with_api_retries(attempt: 0, &block)
