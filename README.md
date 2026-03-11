@@ -1,120 +1,62 @@
 # Flaky RSpec Reporter
 
-A Rails 8 demo application that demonstrates automated detection and reporting of flaky RSpec tests using custom formatters and GitHub Actions.
+Detects and reports flaky RSpec tests across workflow runs. A spec is only reported if it failed in **two different branches**. Reports are published as a GitHub issue.
 
-## Features
+**Logic lives in:** `.github/workflows/`, `lib/`, `scripts/`.
 
-- **Custom RSpec Formatter**: Captures detailed test execution data in JSON format
-- **Flaky Test Detection**: Identifies tests that exhibit inconsistent behavior across multiple runs
-- **GitHub Actions Integration**: Automated test execution and flaky test reporting
-- **Persistent Issue Tracking**: Automatically creates GitHub issues for detected flaky tests
-- **Comprehensive Reporting**: Detailed summaries with failure rates and common error patterns
+---
 
-## Setup
+## Install in your repository
 
-1. Clone the repository:
-```bash
-git clone https://github.com/ftuyama/flaky-rspec-reporter.git
-cd flaky-rspec-reporter
+### 1. Copy the code
+
+Add these into your repo (same layout as this project):
+
+- **`lib/rspec/flaky/formatter.rb`** — RSpec formatter that writes JSON per run
+- **`scripts/generate_report.rb`** — entrypoint for the report job
+- **`scripts/report_builder.rb`** — aggregates runs and builds markdown
+- **`scripts/github_integration.rb`** — fetches artifacts and creates/updates the issue
+
+### 2. Load the formatter
+
+In `spec/spec_helper.rb` (or equivalent):
+
+```ruby
+require_relative '../lib/rspec/flaky/formatter'
 ```
 
-2. Install dependencies:
+### 3. Add the workflows
+
+**`.github/workflows/tests.yml`** (or reuse your existing test workflow):
+
+- Run RSpec with the flaky formatter and write JSON to a folder, e.g.:
+  ```yaml
+  - run: |
+      bundle exec rspec --format RSpec::Flaky::Formatter --out artifacts/flaky-rspec-${{ matrix.run }}.json
+    continue-on-error: true
+  ```
+- Upload that folder as an artifact (e.g. `actions/upload-artifact@v4`) with a name that starts with `rspec-results` so the reporter can find it.
+
+**`.github/workflows/flaky-specs-reporter.yml`**:
+
+Set `GITHUB_WORKFLOW_FILE` to the **filename** of the workflow that runs RSpec and uploads the `rspec-results-*` artifacts (e.g. `tests.yml`).
+
+---
+
+## Manual run
+
+1. In your repo on GitHub: **Actions** → select **Flaky Specs Reporter**.
+2. Click **Run workflow** and run it on the default branch (or choose a branch).
+3. The job fetches artifacts from the last 5 runs of the workflow named in `GITHUB_WORKFLOW_FILE`, aggregates by branch, and creates or updates the **Flaky Specs Report** issue.
+
+You can also run the script locally (requires a GitHub token with `actions: read`, `issues: write`):
+
 ```bash
-bundle install
+GITHUB_TOKEN=ghp_xxx GITHUB_REPO_NAME=owner/repo GITHUB_WORKFLOW_FILE=tests.yml ruby scripts/generate_report.rb
 ```
 
-3. Set up the database:
-```bash
-rails db:create db:migrate
-```
-
-## Usage
-
-### Running Tests with Flaky Reporter
-
-```bash
-# Run tests with the custom flaky formatter
-bundle exec rspec --format RSpec::Flaky::Formatter --out flaky-rspec.json
-
-# View the generated JSON report
-cat flaky-rspec.json
-```
-
-### Aggregating Reports
-
-```bash
-# Aggregate multiple test run reports
-ruby scripts/aggregate_flaky.rb > flaky_summary.txt
-
-# View the summary
-cat flaky_summary.txt
-```
-
-### GitHub Actions Workflow
-
-The repository includes a comprehensive GitHub Actions workflow (`.github/workflows/flaky-rspec.yml`) that:
-
-1. **Runs tests multiple times** to increase the likelihood of detecting flaky behavior
-2. **Uploads test artifacts** for analysis
-3. **Aggregates results** across all test runs
-4. **Creates GitHub issues** for persistent tracking of flaky tests
-5. **Comments on PRs** with flaky test detection results
-
-#### Scheduled Runs
-
-The workflow runs automatically:
-- On every push to `main` or `develop` branches
-- On pull requests to `main`
-- Daily at 2 AM UTC via cron schedule
-- Can be triggered manually
-
-## Demo Tests
-
-The application includes 10 test examples:
-- **7 stable tests**: Consistently pass or fail
-- **3 flaky tests**: Demonstrate different types of flaky behavior:
-  - Random number assertion failures
-  - Timing-dependent test failures  
-  - Randomly failing methods
-
-## Flaky Test Categories
-
-The reporter identifies various types of flaky tests:
-
-1. **Random Data Dependencies**: Tests that fail due to random number generation
-2. **Timing Issues**: Tests with tight timing constraints that may fail under load
-3. **External Dependencies**: Tests that rely on external services or network conditions
-4. **Race Conditions**: Tests that depend on execution order or threading
-
-## Report Format
-
-The JSON reports include:
-- Test descriptions and file locations
-- Execution times and timestamps
-- Success/failure status
-- Exception details for failures
-- Overall run statistics
-
-The aggregated summary provides:
-- Failure rates for each test
-- Most problematic flaky tests
-- Common failure patterns
-- Historical trend data
-
-## Issue Tracking
-
-Flaky tests are automatically tracked via GitHub issues with:
-- **Labels**: `flaky-tests`, `bug`, `automated`
-- **Regular Updates**: New data appended to existing issues
-- **Actionable Information**: Links to test runs and specific failure details
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Submit a pull request
+---
 
 ## License
 
-This project is available as open source under the terms of the MIT License.
+MIT

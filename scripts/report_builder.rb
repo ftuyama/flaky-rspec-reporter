@@ -1,35 +1,44 @@
 # frozen_string_literal: false
 
 # Builds the flaky spec report (md format)
+# Only includes specs that failed in at least two different branches.
 class ReportBuilder
-  attr_reader :json_contents
+  attr_reader :run_data
 
-  def initialize(json_contents)
-    @json_contents = json_contents
+  def initialize(run_data)
+    # run_data: array of { branch:, json: } (branch from workflow run, json string)
+    @run_data = run_data
   end
 
   def build
-    all_examples = parse_jsons
-    flaky_specs = detect_flaky(all_examples)
-    generate_markdown(flaky_specs, all_examples)
+    all_runs = parse_jsons
+    flaky_specs = detect_flaky(all_runs)
+    generate_markdown(flaky_specs, all_runs)
   end
 
   private
 
   def parse_jsons
-    json_contents.map do |json_str|
-      JSON.parse(json_str)
+    run_data.map do |entry|
+      branch = entry[:branch]
+      json_str = entry[:json]
+      parsed = JSON.parse(json_str)
+      parsed['branch'] = branch
+      parsed
     rescue JSON::ParserError => e
       warn("Failed to parse JSON: #{e.message}")
       nil
     end.compact
   end
 
-  # Flatten examples with run metadata
+  # Flatten examples with run metadata (including branch)
   def examples_with_run_data(all_runs)
     all_runs.flat_map do |run|
       run['examples'].map do |ex|
-        ex.merge('run_start_time' => run['run_start_time'])
+        ex.merge(
+          'run_start_time' => run['run_start_time'],
+          'branch' => run['branch']
+        )
       end
     end
   end
@@ -44,9 +53,13 @@ class ReportBuilder
 
   def build_flaky_spec((file, line, description), runs)
     total = runs.size
-    failures = runs.count { |ex| !%w[passed pending].include?(ex['status']) }
-    return if failures.zero?
+    failure_runs = runs.select { |ex| !%w[passed pending].include?(ex['status']) }
+    return if failure_runs.empty?
 
+    branches_with_failures = failure_runs.map { |ex| ex['branch'] }.compact.uniq
+    return if branches_with_failures.size < 2
+
+    failures = failure_runs.size
     {
       file_line: "#{file}:#{line}",
       description:,
@@ -67,12 +80,12 @@ class ReportBuilder
       Number of runs processed: #{all_runs.size}
       First run date: #{all_runs.map { |r| r['run_start_time'] }.min}
 
-      | File:Line | Spec Description | Failures / Total | Flaky Rate (%) |
-      |-----------|-----------------|------------------|----------------|
+      | File:Line | Flaky Rate (%) | Failures / Total | Spec Description |
+      |-----------|----------------|------------------|------------------|
     MD
 
     rows = flaky_specs.map do |spec|
-      "| `#{spec[:file_line]}` | #{spec[:description]} | #{spec[:failures]}/#{spec[:total]} | #{spec[:rate]} |"
+      "| `#{spec[:file_line]}` | #{spec[:rate]} | #{spec[:failures]}/#{spec[:total]} | #{spec[:description]} |"
     end
 
     "#{header}#{rows.join("\n")}\n"
