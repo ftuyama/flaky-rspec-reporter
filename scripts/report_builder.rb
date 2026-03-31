@@ -1,7 +1,7 @@
 # frozen_string_literal: false
 
 # Builds the flaky spec report (md format)
-# Only includes specs that failed in at least two different branches.
+# Only includes specs that failed on at least two different branches.
 class ReportBuilder
   attr_reader :run_data
 
@@ -53,7 +53,7 @@ class ReportBuilder
 
   def build_flaky_spec((file, line, description), runs)
     total = runs.size
-    failure_runs = runs.select { |ex| !%w[passed pending].include?(ex['status']) }
+    failure_runs = runs.reject { |ex| %w[passed pending].include?(ex['status']) }
     return if failure_runs.empty?
 
     branches_with_failures = failure_runs.map { |ex| ex['branch'] }.compact.uniq
@@ -75,13 +75,12 @@ class ReportBuilder
     header = <<~MD
       # Flaky RSpec Report
 
-      Generated at: #{Time.now.utc}
-
-      Number of runs processed: #{all_runs.size}
-      First run date: #{all_runs.map { |r| r['run_start_time'] }.min}
+      - Number of runs processed: #{all_runs.size}
+      - Generated at: #{format_utc(Time.now.utc)}
+      - First run date: #{first_run(all_runs)}
 
       | File:Line | Flaky Rate (%) | Failures / Total | Spec Description |
-      |-----------|----------------|------------------|------------------|
+      |-----------|----------------|-----------------|-----------------|
     MD
 
     rows = flaky_specs.map do |spec|
@@ -89,5 +88,14 @@ class ReportBuilder
     end
 
     "#{header}#{rows.join("\n")}\n"
+  end
+
+  def format_utc(time)
+    time.strftime('%Y-%m-%d %H:%M UTC')
+  end
+
+  def first_run(all_runs)
+    first_run_time = all_runs.map { |r| Time.parse(r['run_start_time']).utc }.min
+    format_utc(first_run_time)
   end
 end

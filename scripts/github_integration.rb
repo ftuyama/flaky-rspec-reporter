@@ -2,6 +2,8 @@
 
 require 'octokit'
 require 'zip'
+require 'net/http'
+require 'uri'
 
 # Github Integration to fetch artifacts and manage issue
 class GithubIntegration
@@ -15,7 +17,7 @@ class GithubIntegration
     size_in_bytes: :size,
     archive_download_url: [:archive_download_url],
     created_at: :created_at
-  }
+  }.freeze
 
   def initialize(repo:, token:)
     @repo = repo
@@ -38,7 +40,6 @@ class GithubIntegration
     end
   end
 
-  # Download artifact and return content
   def download_artifact(artifact)
     zip_file = "#{artifact[:name]}.zip"
     download_url = get_artifact_download_url(artifact[:id])

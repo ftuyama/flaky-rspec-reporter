@@ -9,6 +9,7 @@ gem 'sqlite3', '~> 2.1'
 gem 'puma', '~> 6.0'
 gem 'bootsnap', '>= 1.4.4', require: false
 gem 'octokit' # flaky specs
+gem 'rubyzip', require: 'zip' # flaky reporter scripts (artifact zips)
 
 group :test do
   gem 'rspec-ctrf'
